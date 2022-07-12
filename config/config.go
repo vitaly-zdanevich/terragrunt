@@ -667,6 +667,7 @@ func ParseConfigString(
 		return nil, err
 	}
 
+	// Initialize the parsing state if it is nil.
 	if state == nil {
 		state = &parsingState{}
 	}
@@ -698,7 +699,7 @@ func ParseConfigString(
 			return nil, err
 		}
 		contextExtensions.DecodedDependencies = retrievedOutputs
-		// Update the parsing state
+		// Update the parsing state so that it can be passed through when decoding include blocks.
 		state.dependencyOutputs = retrievedOutputs
 		state.decodedDependencies = decodedDependencies
 	}
@@ -732,6 +733,11 @@ func ParseConfigString(
 		mergedConfig.ProcessedIncludes = trackInclude.CurrentMap
 		// Make sure the top level information that is not automatically merged in is captured on the merged config to
 		// ensure the proper representation of the config is captured.
+		// - Locals are deliberately not merged in so that they remain local in scope. Here, we directly set it to the
+		//   original locals for the current config being handled, as that is the locals list that is in scope for this
+		//   config.
+		// - The top level TerragruntDependencies is already the final merged version, that were merged together across
+		//   includes during the parsing step, so we can directly set it here.
 		mergedConfig.Locals = config.Locals
 		mergedConfig.TerragruntDependencies = config.TerragruntDependencies
 		return mergedConfig, nil
