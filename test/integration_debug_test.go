@@ -220,27 +220,27 @@ func TestRenderJSONConfig(t *testing.T) {
 	}
 
 	// Make sure dependency blocks are rendered out
-	//dependencyBlocks, hasDependency := rendered["dependency"]
-	//if assert.True(t, hasDependency) {
-	//	assert.Equal(
-	//		t,
-	//		map[string]interface{}{
-	//			"dep": map[string]interface{}{
-	//				"name":        "dep",
-	//				"config_path": "../dep",
-	//				"outputs": map[string]interface{}{
-	//					"name": "dep",
-	//				},
-	//				"mock_outputs": nil,
-	//				"mock_outputs_allowed_terraform_commands": nil,
-	//				"mock_outputs_merge_strategy_with_state":  nil,
-	//				"mock_outputs_merge_with_state":           nil,
-	//				"skip":                                    nil,
-	//			},
-	//		},
-	//		dependencyBlocks.(map[string]interface{}),
-	//	)
-	//}
+	dependencyBlocks, hasDependency := rendered["dependency"]
+	if assert.True(t, hasDependency) {
+		assert.Equal(
+			t,
+			map[string]interface{}{
+				"dep": map[string]interface{}{
+					"name":        "dep",
+					"config_path": "../dep",
+					"outputs": map[string]interface{}{
+						"name": "dep",
+					},
+					"mock_outputs": nil,
+					"mock_outputs_allowed_terraform_commands": nil,
+					"mock_outputs_merge_strategy_with_state":  nil,
+					"mock_outputs_merge_with_state":           nil,
+					"skip":                                    nil,
+				},
+			},
+			dependencyBlocks.(map[string]interface{}),
+		)
+	}
 
 	// Make sure included generate block is rendered out
 	generateBlocks, hasGenerate := rendered["generate"]
@@ -318,27 +318,27 @@ func TestRenderJSONConfigWithIncludesDependenciesAndLocals(t *testing.T) {
 	}
 
 	// Make sure included dependency block is rendered out, and with the outputs rendered
-	//dependencyBlocks, hasDependency := rendered["dependency"]
-	//if assert.True(t, hasDependency) {
-	//	assert.Equal(
-	//		t,
-	//		map[string]interface{}{
-	//			"baz": map[string]interface{}{
-	//				"name":        "baz",
-	//				"config_path": "./baz",
-	//				"outputs": map[string]interface{}{
-	//					"baz": "baz",
-	//				},
-	//				"mock_outputs": nil,
-	//				"mock_outputs_allowed_terraform_commands": nil,
-	//				"mock_outputs_merge_strategy_with_state":  nil,
-	//				"mock_outputs_merge_with_state":           nil,
-	//				"skip":                                    nil,
-	//			},
-	//		},
-	//		dependencyBlocks.(map[string]interface{}),
-	//	)
-	//}
+	dependencyBlocks, hasDependency := rendered["dependency"]
+	if assert.True(t, hasDependency) {
+		assert.Equal(
+			t,
+			map[string]interface{}{
+				"baz": map[string]interface{}{
+					"name":        "baz",
+					"config_path": "./baz",
+					"outputs": map[string]interface{}{
+						"baz": "baz",
+					},
+					"mock_outputs": nil,
+					"mock_outputs_allowed_terraform_commands": nil,
+					"mock_outputs_merge_strategy_with_state":  nil,
+					"mock_outputs_merge_with_state":           nil,
+					"skip":                                    nil,
+				},
+			},
+			dependencyBlocks.(map[string]interface{}),
+		)
+	}
 
 	// Make sure generate block is rendered out
 	generateBlocks, hasGenerate := rendered["generate"]
