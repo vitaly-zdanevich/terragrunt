@@ -694,7 +694,9 @@ func ParseConfigString(
 	if state.dependencyOutputs == nil {
 		// Decode just the `dependency` blocks, retrieving the outputs from the target terragrunt config in the
 		// process.
-		retrievedOutputs, decodedDependencies, err := decodeAndRetrieveOutputs(file, filename, terragruntOptions, trackInclude, contextExtensions)
+		retrievedOutputs, decodedDependencies, err := decodeAndRetrieveOutputs(
+			file, filename, terragruntOptions, trackInclude, contextExtensions,
+		)
 		if err != nil {
 			return nil, err
 		}

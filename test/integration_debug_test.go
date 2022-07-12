@@ -365,6 +365,7 @@ func TestRenderJSONConfigWithIncludesDependenciesAndLocals(t *testing.T) {
 				"foo":     "bar",
 				"baz":     "blah",
 				"another": "baz",
+				"from_root": "Hi",
 			},
 			inputsBlock.(map[string]interface{}),
 		)
