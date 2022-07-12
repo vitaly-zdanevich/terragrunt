@@ -227,18 +227,18 @@ func generateTypeFromValuesMap(valMap map[string]cty.Value) cty.Type {
 func includeMapAsCtyVal(
 	includeMap map[string]IncludeConfig,
 	terragruntOptions *options.TerragruntOptions,
-	decodedDependencies *cty.Value,
+	state *parsingState,
 	decodeList []PartialDecodeSectionType,
 ) (cty.Value, error) {
 	bareInclude, hasBareInclude := includeMap[bareIncludeKey]
 	if len(includeMap) == 1 && hasBareInclude {
 		terragruntOptions.Logger.Debug("Detected single bare include block - exposing as top level")
-		return includeConfigAsCtyVal(bareInclude, terragruntOptions, decodedDependencies, decodeList)
+		return includeConfigAsCtyVal(bareInclude, terragruntOptions, state, decodeList)
 	}
 
 	exposedIncludeMap := map[string]cty.Value{}
 	for key, included := range includeMap {
-		parsedIncludedCty, err := includeConfigAsCtyVal(included, terragruntOptions, decodedDependencies, decodeList)
+		parsedIncludedCty, err := includeConfigAsCtyVal(included, terragruntOptions, state, decodeList)
 		if err != nil {
 			return cty.NilVal, err
 		}
@@ -255,11 +255,11 @@ func includeMapAsCtyVal(
 func includeConfigAsCtyVal(
 	includeConfig IncludeConfig,
 	terragruntOptions *options.TerragruntOptions,
-	decodedDependencies *cty.Value,
+	state *parsingState,
 	decodeList []PartialDecodeSectionType,
 ) (cty.Value, error) {
 	if includeConfig.GetExpose() {
-		parsedIncluded, err := parseIncludedConfig(&includeConfig, terragruntOptions, decodedDependencies, decodeList)
+		parsedIncluded, err := parseIncludedConfig(&includeConfig, terragruntOptions, state, decodeList)
 		if err != nil {
 			return cty.NilVal, err
 		}

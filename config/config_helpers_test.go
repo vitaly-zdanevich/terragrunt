@@ -354,7 +354,8 @@ func TestResolveTerragruntInterpolation(t *testing.T) {
 		// get updated due to concurrency within the scope of t.Run(..) below
 		testCase := testCase
 		t.Run(fmt.Sprintf("%s--%s", testCase.str, testCase.terragruntOptions.TerragruntConfigPath), func(t *testing.T) {
-			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, testCase.include, "mock-path-for-test.hcl", nil)
+			state := &parsingState{currentIncludeFromChild: testCase.include}
+			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, "mock-path-for-test.hcl", state)
 			if testCase.expectedErr != "" {
 				require.Error(t, actualErr)
 				assert.Contains(t, actualErr.Error(), testCase.expectedErr)
@@ -449,7 +450,8 @@ func TestResolveEnvInterpolationConfigString(t *testing.T) {
 		// get updated due to concurrency within the scope of t.Run(..) below
 		testCase := testCase
 		t.Run(testCase.str, func(t *testing.T) {
-			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, testCase.include, "mock-path-for-test.hcl", nil)
+			state := &parsingState{currentIncludeFromChild: testCase.include}
+			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, "mock-path-for-test.hcl", state)
 			if testCase.expectedErr != "" {
 				require.Error(t, actualErr)
 				assert.Contains(t, actualErr.Error(), testCase.expectedErr)
@@ -466,25 +468,21 @@ func TestResolveCommandsInterpolationConfigString(t *testing.T) {
 
 	testCases := []struct {
 		str               string
-		include           *IncludeConfig
 		terragruntOptions *options.TerragruntOptions
 		expectedFooInput  []string
 	}{
 		{
 			"inputs = { foo = get_terraform_commands_that_need_locking() }",
-			nil,
 			terragruntOptionsForTest(t, DefaultTerragruntConfigPath),
 			TERRAFORM_COMMANDS_NEED_LOCKING,
 		},
 		{
 			`inputs = { foo = get_terraform_commands_that_need_vars() }`,
-			nil,
 			terragruntOptionsForTest(t, DefaultTerragruntConfigPath),
 			TERRAFORM_COMMANDS_NEED_VARS,
 		},
 		{
 			"inputs = { foo = get_terraform_commands_that_need_parallelism() }",
-			nil,
 			terragruntOptionsForTest(t, DefaultTerragruntConfigPath),
 			TERRAFORM_COMMANDS_NEED_PARALLELISM,
 		},
@@ -496,8 +494,8 @@ func TestResolveCommandsInterpolationConfigString(t *testing.T) {
 		testCase := testCase
 
 		t.Run(testCase.str, func(t *testing.T) {
-			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, testCase.include, "mock-path-for-test.hcl", nil)
-			require.NoError(t, actualErr, "For string '%s' include %v and options %v, unexpected error: %v", testCase.str, testCase.include, testCase.terragruntOptions, actualErr)
+			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, "mock-path-for-test.hcl", nil)
+			require.NoError(t, actualErr, "For string '%s' include 'nil' and options %v, unexpected error: %v", testCase.str, testCase.terragruntOptions, actualErr)
 
 			require.NotNil(t, actualOut)
 
@@ -509,7 +507,7 @@ func TestResolveCommandsInterpolationConfigString(t *testing.T) {
 
 			fooSlice := toStringSlice(t, foo)
 
-			assert.EqualValues(t, testCase.expectedFooInput, fooSlice, "For string '%s' include %v and options %v", testCase.str, testCase.include, testCase.terragruntOptions)
+			assert.EqualValues(t, testCase.expectedFooInput, fooSlice, "For string '%s' include 'nil' and options %v", testCase.str, testCase.terragruntOptions)
 		})
 	}
 }
@@ -528,18 +526,16 @@ func TestResolveCliArgsInterpolationConfigString(t *testing.T) {
 		}
 		testCase := struct {
 			str               string
-			include           *IncludeConfig
 			terragruntOptions *options.TerragruntOptions
 			expectedFooInput  []string
 		}{
 			"inputs = { foo = get_terraform_cli_args() }",
-			nil,
 			opts,
 			expectedFooInput,
 		}
 		t.Run(testCase.str, func(t *testing.T) {
-			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, testCase.include, "mock-path-for-test.hcl", nil)
-			require.NoError(t, actualErr, "For string '%s' include %v and options %v, unexpected error: %v", testCase.str, testCase.include, testCase.terragruntOptions, actualErr)
+			actualOut, actualErr := ParseConfigString(testCase.str, testCase.terragruntOptions, "mock-path-for-test.hcl", nil)
+			require.NoError(t, actualErr, "For string '%s' include 'nil' and options %v, unexpected error: %v", testCase.str, testCase.terragruntOptions, actualErr)
 
 			require.NotNil(t, actualOut)
 
@@ -551,7 +547,7 @@ func TestResolveCliArgsInterpolationConfigString(t *testing.T) {
 
 			fooSlice := toStringSlice(t, foo)
 
-			assert.EqualValues(t, testCase.expectedFooInput, fooSlice, "For string '%s' include %v and options %v", testCase.str, testCase.include, testCase.terragruntOptions)
+			assert.EqualValues(t, testCase.expectedFooInput, fooSlice, "For string '%s' include 'nil' and options %v", testCase.str, testCase.terragruntOptions)
 		})
 	}
 }
@@ -735,7 +731,7 @@ func TestTerraformBuiltInFunctions(t *testing.T) {
 		t.Run(testCase.input, func(t *testing.T) {
 
 			terragruntOptions := terragruntOptionsForTest(t, "../test/fixture-config-terraform-functions/"+DefaultTerragruntConfigPath)
-			actual, err := ParseConfigString(fmt.Sprintf("inputs = { test = %s }", testCase.input), terragruntOptions, nil, terragruntOptions.TerragruntConfigPath, nil)
+			actual, err := ParseConfigString(fmt.Sprintf("inputs = { test = %s }", testCase.input), terragruntOptions, terragruntOptions.TerragruntConfigPath, nil)
 			require.NoError(t, err, "For hcl '%s' include %v and options %v, unexpected error: %v", testCase.input, nil, terragruntOptions, err)
 
 			require.NotNil(t, actual)

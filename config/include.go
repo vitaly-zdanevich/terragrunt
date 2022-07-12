@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/imdario/mergo"
-	"github.com/zclconf/go-cty/cty"
 
 	"github.com/gruntwork-io/terragrunt/errors"
 	"github.com/gruntwork-io/terragrunt/options"
@@ -22,7 +21,7 @@ const bareIncludeKey = ""
 func parseIncludedConfig(
 	includedConfig *IncludeConfig,
 	terragruntOptions *options.TerragruntOptions,
-	dependencyOutputs *cty.Value,
+	state *parsingState,
 	decodeList []PartialDecodeSectionType,
 ) (*TerragruntConfig, error) {
 	if includedConfig.Path == "" {
@@ -90,7 +89,14 @@ func parseIncludedConfig(
 		)
 		return PartialParseConfigFile(includePath, terragruntOptions, includedConfig, decodeList)
 	}
-	return ParseConfigFile(includePath, terragruntOptions, includedConfig, dependencyOutputs)
+
+	// Make a new state object with the include information so we don't mess up the upstream callers' state
+	clonedState := &parsingState{
+		currentIncludeFromChild: includedConfig,
+		dependencyOutputs:       state.dependencyOutputs,
+		decodedDependencies:     state.decodedDependencies,
+	}
+	return ParseConfigFile(includePath, terragruntOptions, clonedState)
 }
 
 // handleInclude merges the included config into the current config depending on the merge strategy specified by the
@@ -99,7 +105,7 @@ func handleInclude(
 	config *TerragruntConfig,
 	trackInclude *TrackInclude,
 	terragruntOptions *options.TerragruntOptions,
-	dependencyOutputs *cty.Value,
+	state *parsingState,
 ) (*TerragruntConfig, error) {
 	if trackInclude == nil {
 		return nil, fmt.Errorf("You reached an impossible condition. This is most likely a bug in terragrunt. Please open an issue at github.com/gruntwork-io/terragrunt with this error message. Code: HANDLE_INCLUDE_NIL_INCLUDE_CONFIG")
@@ -116,7 +122,7 @@ func handleInclude(
 			return config, err
 		}
 
-		parsedIncludeConfig, err := parseIncludedConfig(&includeConfig, terragruntOptions, dependencyOutputs, nil)
+		parsedIncludeConfig, err := parseIncludedConfig(&includeConfig, terragruntOptions, state, nil)
 		if err != nil {
 			return nil, err
 		}
