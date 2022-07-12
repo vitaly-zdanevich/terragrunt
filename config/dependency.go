@@ -150,23 +150,23 @@ func decodeAndRetrieveOutputs(
 	terragruntOptions *options.TerragruntOptions,
 	trackInclude *TrackInclude,
 	extensions EvalContextExtensions,
-) (*cty.Value, error) {
+) (*cty.Value, []Dependency, error) {
 	decodedDependency := terragruntDependency{}
 	if err := decodeHcl(file, filename, &decodedDependency, terragruntOptions, extensions); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Merge in included dependencies
 	if trackInclude != nil {
 		mergedDecodedDependency, err := handleIncludeForDependency(decodedDependency, trackInclude, terragruntOptions)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		decodedDependency = *mergedDecodedDependency
 	}
 
 	if err := checkForDependencyBlockCycles(filename, decodedDependency, terragruntOptions); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return dependencyBlocksToCtyValue(decodedDependency.Dependencies, terragruntOptions)
 }
@@ -263,7 +263,7 @@ func getDependencyBlockConfigPathsByFilepath(configPath string, terragruntOption
 // - outputs: The map of outputs of the corresponding terraform module that lives at the target config of the
 //            dependency.
 // This routine will go through the process of obtaining the outputs using `terragrunt output` from the target config.
-func dependencyBlocksToCtyValue(dependencyConfigs []Dependency, terragruntOptions *options.TerragruntOptions) (*cty.Value, error) {
+func dependencyBlocksToCtyValue(dependencyConfigs []Dependency, terragruntOptions *options.TerragruntOptions) (*cty.Value, []Dependency, error) {
 	paths := []string{}
 
 	// dependencyMap is the top level map that maps dependency block names to the encoded version, which includes
@@ -272,8 +272,12 @@ func dependencyBlocksToCtyValue(dependencyConfigs []Dependency, terragruntOption
 	lock := sync.Mutex{}
 	dependencyErrGroup, _ := errgroup.WithContext(context.Background())
 
-	for _, dependencyConfig := range dependencyConfigs {
-		dependencyConfig := dependencyConfig // https://golang.org/doc/faq#closures_and_goroutines
+	for i, dependencyConfig := range dependencyConfigs {
+		// Capture the range loop variables into the closure so it stays consistent across the for loop and goroutines.
+		// See https://golang.org/doc/faq#closures_and_goroutines for more info.
+		dependencyConfig := dependencyConfig
+		i := i
+
 		dependencyErrGroup.Go(func() error {
 			// Loose struct to hold the attributes of the dependency. This includes:
 			// - outputs: The module outputs of the target config
@@ -302,12 +306,14 @@ func dependencyBlocksToCtyValue(dependencyConfigs []Dependency, terragruntOption
 
 			// Finally, feed the encoded dependency into the higher order map under the block name
 			dependencyMap[dependencyConfig.Name] = dependencyEncodingMapEncoded
+			// ... and update the original dependency config list with the version that has the rendered outputs set.
+			dependencyConfigs[i] = dependencyConfig
 			return nil
 		})
 	}
 
 	if err := dependencyErrGroup.Wait(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// We need to convert the value map to a single cty.Value at the end so that it can be used in the execution context
@@ -315,7 +321,7 @@ func dependencyBlocksToCtyValue(dependencyConfigs []Dependency, terragruntOption
 	if err != nil {
 		err = TerragruntOutputListEncodingError{Paths: paths, Err: err}
 	}
-	return &convertedOutput, errors.WithStackTrace(err)
+	return &convertedOutput, dependencyConfigs, errors.WithStackTrace(err)
 }
 
 // This will attempt to get the outputs from the target terragrunt config if it is applied. If it is not applied, the

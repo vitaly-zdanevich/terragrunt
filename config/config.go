@@ -422,6 +422,11 @@ type parsingState struct {
 	// needing to repeatedly resolve dependency outputs across includes.
 	dependencyOutputs *cty.Value
 
+	// decodedDependencies represents the list of Dependency block objects with the outputs rendered. This is tracked
+	// for the same reason as dependencyOutputs, but is primarily used for informational purposes so that functions that
+	// render the TerragruntConfig to different formats capture the correct information.
+	decodedDependencies []Dependency
+
 	// currentIncludeFromChild represents whether this config was included from a child config, and if so what include
 	// block called the current config.
 	currentIncludeFromChild *IncludeConfig
@@ -686,7 +691,7 @@ func ParseConfigString(
 	if state.dependencyOutputs == nil {
 		// Decode just the `dependency` blocks, retrieving the outputs from the target terragrunt config in the
 		// process.
-		retrievedOutputs, err := decodeAndRetrieveOutputs(file, filename, terragruntOptions, trackInclude, contextExtensions)
+		retrievedOutputs, decodedDependencies, err := decodeAndRetrieveOutputs(file, filename, terragruntOptions, trackInclude, contextExtensions)
 		if err != nil {
 			return nil, err
 		}
@@ -694,6 +699,7 @@ func ParseConfigString(
 
 		// Update the state with the retrieved outputs.
 		state.dependencyOutputs = retrievedOutputs
+		state.decodedDependencies = decodedDependencies
 	}
 
 	// Decode the rest of the config, passing in this config's `include` block or the child's `include` block, whichever
