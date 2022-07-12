@@ -415,6 +415,18 @@ func (conf *TerraformExtraArguments) GetVarFiles(logger *logrus.Entry) []string 
 	return varFiles
 }
 
+// parsingState represents state that are important to track while parsing the terragrunt configuration.
+type parsingState struct {
+	// dependencyOutputs represents the map of dependency names to outputs that are used to resolve
+	// dependency.foo.outputs values in the terragrunt config. This is tracked through the parsing stage to avoid
+	// needing to repeatedly resolve dependency outputs across includes.
+	dependencyOutputs *cty.Value
+
+	// currentIncludeFromChild represents whether this config was included from a child config, and if so what include
+	// block called the current config.
+	currentIncludeFromChild *IncludeConfig
+}
+
 // There are two ways a user can tell Terragrunt that it needs to download Terraform configurations from a specific
 // URL: via a command-line option or via an entry in the Terragrunt configuration. If the user used one of these, this
 // method returns the source URL or an empty string if there is no source url
@@ -588,18 +600,18 @@ func containsTerragruntModule(path string, info os.FileInfo, terragruntOptions *
 // Read the Terragrunt config file from its default location
 func ReadTerragruntConfig(terragruntOptions *options.TerragruntOptions) (*TerragruntConfig, error) {
 	terragruntOptions.Logger.Debugf("Reading Terragrunt config file at %s", terragruntOptions.TerragruntConfigPath)
-	return ParseConfigFile(terragruntOptions.TerragruntConfigPath, terragruntOptions, nil, nil)
+	return ParseConfigFile(terragruntOptions.TerragruntConfigPath, terragruntOptions, nil)
 }
 
-// Parse the Terragrunt config file at the given path. If the include parameter is not nil, then treat this as a config
-// included in some other config file when resolving relative paths.
-func ParseConfigFile(filename string, terragruntOptions *options.TerragruntOptions, include *IncludeConfig, dependencyOutputs *cty.Value) (*TerragruntConfig, error) {
+// Parse the Terragrunt config file at the given path Refer to the documentation for the parsingState struct for more
+// information on the various state that is tracked across the parsing steps.
+func ParseConfigFile(filename string, terragruntOptions *options.TerragruntOptions, state *parsingState) (*TerragruntConfig, error) {
 	configString, err := util.ReadFileAsString(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := ParseConfigString(configString, terragruntOptions, include, filename, dependencyOutputs)
+	config, err := ParseConfigString(configString, terragruntOptions, filename, state)
 	if err != nil {
 		return nil, err
 	}
@@ -636,9 +648,8 @@ func ParseConfigFile(filename string, terragruntOptions *options.TerragruntOptio
 func ParseConfigString(
 	configString string,
 	terragruntOptions *options.TerragruntOptions,
-	includeFromChild *IncludeConfig,
 	filename string,
-	dependencyOutputs *cty.Value,
+	state *parsingState,
 ) (*TerragruntConfig, error) {
 	// Parse the HCL string into an AST body that can be decoded multiple times later without having to re-parse
 	parser := hclparse.NewParser()
@@ -647,14 +658,20 @@ func ParseConfigString(
 		return nil, err
 	}
 
+	// Initialize the parsing state if nil. This makes the subsequent references easier to implement as we don't have to
+	// worry about a nil state.
+	if state == nil {
+		state = &parsingState{}
+	}
+
 	// Initial evaluation of configuration to load flags like IamRole which will be used for final parsing
 	// https://github.com/gruntwork-io/terragrunt/issues/667
-	if err := setIAMRole(configString, terragruntOptions, includeFromChild, filename); err != nil {
+	if err := setIAMRole(configString, terragruntOptions, state.currentIncludeFromChild, filename); err != nil {
 		return nil, err
 	}
 
 	// Decode just the Base blocks. See the function docs for DecodeBaseBlocks for more info on what base blocks are.
-	localsAsCty, trackInclude, err := DecodeBaseBlocks(terragruntOptions, parser, file, filename, includeFromChild, nil)
+	localsAsCty, trackInclude, err := DecodeBaseBlocks(terragruntOptions, parser, file, filename, state.currentIncludeFromChild, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -663,10 +680,10 @@ func ParseConfigString(
 	contextExtensions := EvalContextExtensions{
 		Locals:              localsAsCty,
 		TrackInclude:        trackInclude,
-		DecodedDependencies: dependencyOutputs,
+		DecodedDependencies: state.dependencyOutputs,
 	}
 
-	if dependencyOutputs == nil {
+	if state.dependencyOutputs == nil {
 		// Decode just the `dependency` blocks, retrieving the outputs from the target terragrunt config in the
 		// process.
 		retrievedOutputs, err := decodeAndRetrieveOutputs(file, filename, terragruntOptions, trackInclude, contextExtensions)
@@ -674,6 +691,9 @@ func ParseConfigString(
 			return nil, err
 		}
 		contextExtensions.DecodedDependencies = retrievedOutputs
+
+		// Update the state with the retrieved outputs.
+		state.dependencyOutputs = retrievedOutputs
 	}
 
 	// Decode the rest of the config, passing in this config's `include` block or the child's `include` block, whichever
@@ -693,7 +713,7 @@ func ParseConfigString(
 
 	// If this file includes another, parse and merge it.  Otherwise just return this config.
 	if trackInclude != nil {
-		config, err := handleInclude(config, trackInclude, terragruntOptions, contextExtensions.DecodedDependencies)
+		config, err := handleInclude(config, trackInclude, terragruntOptions, state)
 		if err != nil {
 			return nil, err
 		}

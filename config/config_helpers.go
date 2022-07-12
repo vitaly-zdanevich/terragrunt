@@ -163,7 +163,8 @@ func CreateTerragruntEvalContext(
 	if extensions.TrackInclude != nil && len(extensions.TrackInclude.CurrentList) > 0 {
 		// For each include block, check if we want to expose the included config, and if so, add under the include
 		// variable.
-		exposedInclude, err := includeMapAsCtyVal(extensions.TrackInclude.CurrentMap, terragruntOptions, extensions.DecodedDependencies, extensions.PartialParseDecodeList)
+		state := &parsingState{dependencyOutputs: extensions.DecodedDependencies}
+		exposedInclude, err := includeMapAsCtyVal(extensions.TrackInclude.CurrentMap, terragruntOptions, state, extensions.PartialParseDecodeList)
 		if err != nil {
 			return ctx, err
 		}
@@ -509,7 +510,7 @@ func readTerragruntConfig(configPath string, defaultVal *cty.Value, terragruntOp
 
 	// We update the context of terragruntOptions to the config being read in.
 	targetOptions := terragruntOptions.Clone(targetConfig)
-	config, err := ParseConfigFile(targetConfig, targetOptions, nil, nil)
+	config, err := ParseConfigFile(targetConfig, targetOptions, nil)
 	if err != nil {
 		return cty.NilVal, err
 	}
