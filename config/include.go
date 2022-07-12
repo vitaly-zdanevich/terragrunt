@@ -94,6 +94,7 @@ func parseIncludedConfig(
 	clonedState := &parsingState{
 		currentIncludeFromChild: includedConfig,
 		dependencyOutputs:       state.dependencyOutputs,
+		decodedDependencies:     state.decodedDependencies,
 	}
 	return ParseConfigFile(includePath, terragruntOptions, clonedState)
 }

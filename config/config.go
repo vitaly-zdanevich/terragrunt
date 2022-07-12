@@ -683,24 +683,21 @@ func ParseConfigString(
 
 	// Initialize evaluation context extensions from base blocks.
 	contextExtensions := EvalContextExtensions{
-		Locals:              localsAsCty,
-		TrackInclude:        trackInclude,
-		DecodedDependencies: state.dependencyOutputs,
+		Locals:       localsAsCty,
+		TrackInclude: trackInclude,
 	}
 
-	if state.dependencyOutputs == nil {
-		// Decode just the `dependency` blocks, retrieving the outputs from the target terragrunt config in the
-		// process.
-		retrievedOutputs, decodedDependencies, err := decodeAndRetrieveOutputs(file, filename, terragruntOptions, trackInclude, contextExtensions)
-		if err != nil {
-			return nil, err
-		}
-		contextExtensions.DecodedDependencies = retrievedOutputs
-
-		// Update the state with the retrieved outputs.
-		state.dependencyOutputs = retrievedOutputs
-		state.decodedDependencies = decodedDependencies
+	// Decode just the `dependency` blocks, retrieving the outputs from the target terragrunt config in the
+	// process.
+	retrievedOutputs, decodedDependencies, err := decodeAndRetrieveOutputs(file, filename, terragruntOptions, trackInclude, contextExtensions)
+	if err != nil {
+		return nil, err
 	}
+	contextExtensions.DecodedDependencies = retrievedOutputs
+
+	// Update the state with the retrieved outputs.
+	state.dependencyOutputs = retrievedOutputs
+	state.decodedDependencies = decodedDependencies
 
 	// Decode the rest of the config, passing in this config's `include` block or the child's `include` block, whichever
 	// is appropriate
@@ -717,6 +714,9 @@ func ParseConfigString(
 		return nil, err
 	}
 
+	// Set the TerragruntDependencies to be the combined version that accounts for includes from above.
+	config.TerragruntDependencies = state.decodedDependencies
+
 	// If this file includes another, parse and merge it.  Otherwise just return this config.
 	if trackInclude != nil {
 		mergedConfig, err := handleInclude(config, trackInclude, terragruntOptions, state)
@@ -730,7 +730,10 @@ func ParseConfigString(
 		// - Locals are deliberately not merged in so that they remain local in scope. Here, we directly set it to the
 		//   original locals for the current config being handled, as that is the locals list that is in scope for this
 		//   config.
+		// - The top level TerragruntDependencies is already the final merged version, that were merged together across
+		//   includes during the parsing step, so we can directly set it here.
 		mergedConfig.Locals = config.Locals
+		mergedConfig.TerragruntDependencies = state.decodedDependencies
 		return mergedConfig, nil
 	}
 	return config, nil
