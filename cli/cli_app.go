@@ -41,6 +41,7 @@ const (
 	optTerragruntSourceMap                      = "terragrunt-source-map"
 	optTerragruntSourceUpdate                   = "terragrunt-source-update"
 	optTerragruntIAMRole                        = "terragrunt-iam-role"
+	optTerragruntIAMProfile                     = "terragrunt-iam-profile"
 	optTerragruntIAMAssumeRoleDuration          = "terragrunt-iam-assume-role-duration"
 	optTerragruntIAMAssumeRoleSessionName       = "terragrunt-iam-assume-role-session-name"
 	optTerragruntIgnoreDependencyErrors         = "terragrunt-ignore-dependency-errors"
@@ -89,6 +90,7 @@ var allTerragruntStringOpts = []string{
 	optTerragruntSource,
 	optTerragruntSourceMap,
 	optTerragruntIAMRole,
+	optTerragruntIAMProfile,
 	optTerragruntIAMAssumeRoleDuration,
 	optTerragruntIAMAssumeRoleSessionName,
 	optTerragruntExcludeDir,
