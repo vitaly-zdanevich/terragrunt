@@ -204,6 +204,9 @@ type TerragruntOptions struct {
 
 	// Controls if a module prefix will be prepended to TF outputs
 	IncludeModulePrefix bool
+
+	// Controls number of parallel evaluated dependencies
+	DependenciesParallelism int
 }
 
 // IAMOptions represents options that are used by Terragrunt to assume an IAM role.
@@ -285,6 +288,7 @@ func NewTerragruntOptions(terragruntConfigPath string) (*TerragruntOptions, erro
 		UsePartialParseConfigCache:     false,
 		OutputPrefix:                   "",
 		IncludeModulePrefix:            false,
+		DependenciesParallelism:        0,
 		RunTerragrunt: func(terragruntOptions *TerragruntOptions) error {
 			return errors.WithStackTrace(RunTerragruntCommandNotSet)
 		},
@@ -383,6 +387,7 @@ func (terragruntOptions *TerragruntOptions) Clone(terragruntConfigPath string) *
 		UsePartialParseConfigCache:     terragruntOptions.UsePartialParseConfigCache,
 		OutputPrefix:                   terragruntOptions.OutputPrefix,
 		IncludeModulePrefix:            terragruntOptions.IncludeModulePrefix,
+		DependenciesParallelism:        terragruntOptions.DependenciesParallelism,
 	}
 }
 

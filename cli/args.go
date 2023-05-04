@@ -186,6 +186,13 @@ func parseTerragruntOptionsFromArgs(terragruntVersion string, args []string, wri
 	}
 	opts.Parallelism = parallelism
 
+	envValue, envProvided := os.LookupEnv("TERRAGRUNT_DEPENDENCIES_PARALLELISM")
+	parsedParallelism, err := parseIntArg(args, optTerragruntDependenciesParallelism, envValue, envProvided, -1)
+	if err != nil {
+		return nil, err
+	}
+	opts.DependenciesParallelism = parsedParallelism
+
 	iamRoleOpts, err := parseIAMRoleOptions(args)
 	if err != nil {
 		return nil, err

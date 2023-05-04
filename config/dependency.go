@@ -273,7 +273,9 @@ func dependencyBlocksToCtyValue(dependencyConfigs []Dependency, terragruntOption
 	dependencyMap := map[string]cty.Value{}
 	lock := sync.Mutex{}
 	dependencyErrGroup, _ := errgroup.WithContext(context.Background())
-
+	if terragruntOptions.DependenciesParallelism > 0 {
+		dependencyErrGroup.SetLimit(terragruntOptions.DependenciesParallelism)
+	}
 	for _, dependencyConfig := range dependencyConfigs {
 		dependencyConfig := dependencyConfig // https://golang.org/doc/faq#closures_and_goroutines
 		dependencyErrGroup.Go(func() error {

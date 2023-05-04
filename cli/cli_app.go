@@ -63,6 +63,7 @@ const (
 	optTerragruntFetchDependencyOutputFromState = "terragrunt-fetch-dependency-output-from-state"
 	optTerragruntUsePartialParseConfigCache     = "terragrunt-use-partial-parse-config-cache"
 	optTerragruntIncludeModulePrefix            = "terragrunt-include-module-prefix"
+	optTerragruntDependenciesParallelism        = "terragrunt-dependencies-parallelism"
 	optTerragruntOutputWithMetadata             = "with-metadata"
 )
 
@@ -97,6 +98,7 @@ var allTerragruntStringOpts = []string{
 	optTerragruntExcludeDir,
 	optTerragruntIncludeDir,
 	optTerragruntParallelism,
+	optTerragruntDependenciesParallelism,
 	optTerragruntHCLFmt,
 	optTerragruntOverrideAttr,
 	optTerragruntLogLevel,
@@ -266,6 +268,7 @@ GLOBAL OPTIONS:
    terragrunt-json-out                          The file path that terragrunt should use when rendering the terragrunt.hcl config as json. Only used in the render-json command. Defaults to terragrunt_rendered.json.
    terragrunt-use-partial-parse-config-cache    Enables caching of includes during partial parsing operations. Will also be used for the --terragrunt-iam-role option if provided.
    terragrunt-include-module-prefix             When this flag is set output from Terraform sub-commands is prefixed with module path.
+   terragrunt-dependencies-parallelism <N>      Number of dependencies evaluated in parallel.
 
 VERSION:
    {{.Version}}{{if len .Authors}}
