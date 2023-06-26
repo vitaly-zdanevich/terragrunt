@@ -196,6 +196,9 @@ type TerragruntOptions struct {
 	// This is an experimental feature, used to speed up dependency processing by getting the output from the state
 	FetchDependencyOutputFromState bool
 
+	// Enables caching of full config strings during normal parsing operations.
+	UseParseConfigCache bool
+
 	// Enables caching of includes during partial parsing operations.
 	UsePartialParseConfigCache bool
 
@@ -286,6 +289,7 @@ func NewTerragruntOptions(terragruntConfigPath string) (*TerragruntOptions, erro
 		Check:                          false,
 		Diff:                           false,
 		FetchDependencyOutputFromState: false,
+		UseParseConfigCache:            false,
 		UsePartialParseConfigCache:     false,
 		OutputPrefix:                   "",
 		IncludeModulePrefix:            false,

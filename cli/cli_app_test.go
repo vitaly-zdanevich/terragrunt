@@ -293,6 +293,7 @@ func BenchmarkRunGraphDependencies(b *testing.B) {
 			workingDir := filepath.Join(cwd, testDir, fixture.workingDir)
 			terragruntOptions, err := options.NewTerragruntOptionsForTest(workingDir)
 			if fixture.usePartialParseCache {
+				terragruntOptions.UseParseConfigCache = true
 				terragruntOptions.UsePartialParseConfigCache = true
 			} else {
 				terragruntOptions.UsePartialParseConfigCache = false

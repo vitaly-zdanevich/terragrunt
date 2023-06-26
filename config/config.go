@@ -641,12 +641,44 @@ func ParseConfigFile(filename string, terragruntOptions *options.TerragruntOptio
 		return nil, err
 	}
 
-	config, err := ParseConfigString(configString, terragruntOptions, include, filename, dependencyOutputs)
+	config, err := TerragruntConfigFromConfigString(configString, terragruntOptions, include, filename, dependencyOutputs)
 	if err != nil {
 		return nil, err
 	}
 
 	return config, nil
+}
+
+// Wrapper of ParseConfigString which checks for cached configs.
+// configString, includeFromChild and dependencyOutputs are used for the cache key,
+// by getting the default value (%#v) through fmt.
+func TerragruntConfigFromConfigString(
+	configString string,
+	terragruntOptions *options.TerragruntOptions,
+	includeFromChild *IncludeConfig,
+	filename string,
+	dependencyOutputs *cty.Value,
+) (*TerragruntConfig, error) {
+	if terragruntOptions.UsePartialParseConfigCache {
+		var cacheKey = fmt.Sprintf("%#v-%#v-%#v", configString, includeFromChild, dependencyOutputs)
+		var config, found = terragruntConfigCache.Get(cacheKey)
+
+		if !found {
+			terragruntOptions.Logger.Debugf("Cache miss for '%s' (normal parsing).", filename)
+			tgConfig, err := ParseConfigString(configString, terragruntOptions, includeFromChild, filename, dependencyOutputs)
+			if err != nil {
+				return nil, err
+			}
+			config = *tgConfig
+			terragruntConfigCache.Put(cacheKey, config)
+		} else {
+			terragruntOptions.Logger.Debugf("Cache hit for '%s' (normal parsing).", filename)
+		}
+
+		return &config, nil
+	} else {
+		return ParseConfigString(configString, terragruntOptions, includeFromChild, filename, dependencyOutputs)
+	}
 }
 
 // Parse the Terragrunt config contained in the given string and merge it with the given include config (if any). Note
@@ -733,7 +765,7 @@ func ParseConfigString(
 		return nil, err
 	}
 
-	// If this file includes another, parse and merge it.  Otherwise just return this config.
+	// If this file includes another, parse and merge it. Otherwise just return this config.
 	if trackInclude != nil {
 		mergedConfig, err := handleInclude(config, trackInclude, terragruntOptions, contextExtensions.DecodedDependencies)
 		if err != nil {
