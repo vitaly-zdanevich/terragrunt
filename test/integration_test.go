@@ -4796,11 +4796,12 @@ func TestTerragruntOutputFromRemoteState(t *testing.T) {
 func TestShowErrorWhenRunAllInvokedWithoutArguments(t *testing.T) {
 	t.Parallel()
 
-	appPath := TEST_FIXTURE_STACK
+	cleanupTerraformFolder(t, TEST_FIXTURE_STACK)
+	tmpEnvPath := copyEnvironment(t, TEST_FIXTURE_STACK)
 
 	stdout := bytes.Buffer{}
 	stderr := bytes.Buffer{}
-	err := runTerragruntCommand(t, fmt.Sprintf("terragrunt run-all --terragrunt-non-interactive --terragrunt-working-dir %s", appPath), &stdout, &stderr)
+	err := runTerragruntCommand(t, fmt.Sprintf("terragrunt run-all --terragrunt-non-interactive --terragrunt-working-dir %s", tmpEnvPath), &stdout, &stderr)
 	require.Error(t, err)
 	_, ok := errors.Unwrap(err).(runall.MissingCommand)
 	assert.True(t, ok)
