@@ -1044,7 +1044,7 @@ func testRemoteFixtureParallelism(t *testing.T, parallelism int, numberOfModules
 }
 
 func TestTerragruntStackCommands(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 
 	s3BucketName := fmt.Sprintf("terragrunt-test-bucket-%s", strings.ToLower(uniqueId()))
 	lockTableName := fmt.Sprintf("terragrunt-test-locks-%s", strings.ToLower(uniqueId()))
