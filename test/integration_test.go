@@ -1067,7 +1067,7 @@ func TestTerragruntStackCommandsFirst(t *testing.T) {
 }
 
 func TestTerragruntStackCommandsSecond(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 
 	s3BucketName := fmt.Sprintf("terragrunt-test-bucket-%s", strings.ToLower(uniqueId()))
 	lockTableName := fmt.Sprintf("terragrunt-test-locks-%s", strings.ToLower(uniqueId()))
