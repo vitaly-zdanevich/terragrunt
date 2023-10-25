@@ -7,7 +7,10 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
+
+	"github.com/mattn/go-zglob"
 
 	"github.com/zclconf/go-cty/cty/gocty"
 
@@ -572,38 +575,58 @@ func GetDefaultConfigPath(workingDir string) string {
 // Returns a list of all Terragrunt config files in the given path or any subfolder of the path. A file is a Terragrunt
 // config file if it has a name as returned by the DefaultConfigPath method
 func FindConfigFilesInPath(rootPath string, terragruntOptions *options.TerragruntOptions) ([]string, error) {
-	configFiles := []string{}
+	var configFiles []string
 
-	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+	scanDirectories := []string{rootPath}
+	if terragruntOptions.StrictInclude || len(terragruntOptions.IncludeDirs) > 0 {
+		scanDirectories = []string{}
+	}
+
+	for _, directory := range terragruntOptions.IncludeDirs {
+		matches, err := zglob.Glob(filepath.Join(rootPath, directory))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if !info.IsDir() {
+		scanDirectories = append(scanDirectories, matches...)
+	}
+
+	for _, directory := range scanDirectories {
+		terragruntOptions.Logger.Debugf("Scanning for Terragrunt modules in %s", directory)
+
+		err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// skip directories
+			if ok, err := isTerragruntModuleDir(path, terragruntOptions); err != nil {
+				return err
+			} else if !ok {
+				return filepath.SkipDir
+			}
+
+			// Check which from default configs exists and append it to the list
+			for _, configFile := range append(DefaultTerragruntConfigPaths, filepath.Base(terragruntOptions.TerragruntConfigPath)) {
+				if !filepath.IsAbs(configFile) {
+					configFile = util.JoinPath(directory, configFile)
+				}
+
+				if !util.IsDir(configFile) && util.FileExists(configFile) {
+					configFiles = append(configFiles, configFile)
+					break
+				}
+			}
+
 			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
+	}
 
-		if ok, err := isTerragruntModuleDir(path, terragruntOptions); err != nil {
-			return err
-		} else if !ok {
-			return filepath.SkipDir
-		}
-
-		for _, configFile := range append(DefaultTerragruntConfigPaths, filepath.Base(terragruntOptions.TerragruntConfigPath)) {
-			if !filepath.IsAbs(configFile) {
-				configFile = util.JoinPath(path, configFile)
-			}
-
-			if !util.IsDir(configFile) && util.FileExists(configFile) {
-				configFiles = append(configFiles, configFile)
-				break
-			}
-		}
-
-		return nil
-	})
-
-	return configFiles, err
+	sort.Strings(configFiles)
+	return configFiles, nil
 }
 
 // isTerragruntModuleDir returns true if the given path contains a Terragrunt module and false otherwise. The path
